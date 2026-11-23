@@ -1,6 +1,6 @@
-
 name: Snowflake-devops-CICD
 
+# Workflow triggers
 on:
   push:
     branches:
@@ -13,35 +13,76 @@ on:
 
 jobs:
   deploy-snowflake-changes-job:
+
+    name: Deploy Snowflake Migrations
+
     runs-on: ubuntu-latest
 
     steps:
 
-      # Step 1: Checkout repository
+      # -----------------------------------------
+      # STEP 1: Checkout Repository
+      # -----------------------------------------
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      # Step 2: Setup Python
+      # -----------------------------------------
+      # STEP 2: Setup Python
+      # -----------------------------------------
       - name: Setup Python 3.12
         uses: actions/setup-python@v6
         with:
           python-version: '3.12'
 
-      # Step 3: Install schemachange
+      # -----------------------------------------
+      # STEP 3: Install schemachange
+      # -----------------------------------------
       - name: Install schemachange
         run: |
           python -m pip install --upgrade pip
-          pip install "schemachange>=4.1.0,<5.0.0"
+          pip install schemachange==4.4.0
 
-      # Step 4: Verify installation
+      # -----------------------------------------
+      # STEP 4: Verify Installation
+      # -----------------------------------------
       - name: Verify schemachange
         run: |
           python --version
           schemachange --version
-          schemachange deploy --help
 
-      # Step 5: Deploy Snowflake migrations
+      # -----------------------------------------
+      # STEP 5: Prepare isolated configuration
+      # -----------------------------------------
+      - name: Prepare schemachange config
+        run: |
+          mkdir -p /tmp/schemachange-empty-config
+
+          echo "Isolated configuration directory created"
+
+      # -----------------------------------------
+      # STEP 6: Check Migration Files
+      # -----------------------------------------
+      - name: Check migration files
+        run: |
+          echo "Available migration files:"
+
+          find migrations -type f -name "*.sql" -print
+
+          if [ ! -d migrations ]; then
+            echo "ERROR: migrations folder not found"
+            exit 1
+          fi
+
+          if ! find migrations -type f -name "*.sql" | grep -q .; then
+            echo "ERROR: No SQL migration files found"
+            exit 1
+          fi
+
+      # -----------------------------------------
+      # STEP 7: Deploy Snowflake Changes
+      # -----------------------------------------
       - name: Run schemachange Deployment
+
         env:
           SNOWFLAKE_ACCOUNT: ${{ secrets.SF_ACCOUNT }}
           SNOWFLAKE_USER: ${{ secrets.SF_USERNAME }}
@@ -51,8 +92,14 @@ jobs:
           SNOWFLAKE_PASSWORD: ${{ secrets.SF_PASSWORD }}
 
         run: |
+
+          echo "=================================="
+          echo "Starting Snowflake CI/CD Deployment"
+          echo "=================================="
+
           schemachange deploy \
-            -f $GITHUB_WORKSPACE/migrations \
+            --config-folder /tmp/schemachange-empty-config \
+            -f "$GITHUB_WORKSPACE/migrations" \
             -a "$SNOWFLAKE_ACCOUNT" \
             -u "$SNOWFLAKE_USER" \
             -r "$SNOWFLAKE_ROLE" \
@@ -62,4 +109,6 @@ jobs:
             --schemachange-create-change-history-table \
             -L DEBUG
 
-          echo "Snowflake deployment completed successfully"
+          echo "=================================="
+          echo "Snowflake Deployment Completed"
+          echo "=================================="
