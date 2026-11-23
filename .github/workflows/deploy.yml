@@ -51,17 +51,15 @@ jobs:
           SNOWFLAKE_PASSWORD: ${{ secrets.SF_PASSWORD }}
 
         run: |
-
-          echo "Starting Snowflake deployment"
-
           schemachange deploy \
             -f $GITHUB_WORKSPACE/migrations \
-            -a $SNOWFLAKE_ACCOUNT \
-            -u $SNOWFLAKE_USER \
-            -r $SNOWFLAKE_ROLE \
-            -w $SNOWFLAKE_WAREHOUSE \
-            -d $SNOWFLAKE_DATABASE \
-            -c $SNOWFLAKE_DATABASE.SCHEMACHANGE.CHANGE_HISTORY \
-            --create-change-history-table
+            -a "$SNOWFLAKE_ACCOUNT" \
+            -u "$SNOWFLAKE_USER" \
+            -r "$SNOWFLAKE_ROLE" \
+            -w "$SNOWFLAKE_WAREHOUSE" \
+            -d "$SNOWFLAKE_DATABASE" \
+            -c "$SNOWFLAKE_DATABASE.SCHEMACHANGE.CHANGE_HISTORY" \
+            --schemachange-create-change-history-table \
+            -L DEBUG
 
           echo "Snowflake deployment completed successfully"
